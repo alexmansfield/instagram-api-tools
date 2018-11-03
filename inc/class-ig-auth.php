@@ -19,6 +19,22 @@ class IG_API_Tools_Auth {
 	}
 
 	/**
+	 * Get the Instagram client secret
+	 */
+	public function get_client_secret() {
+
+		// Allow plugins to set their own client secret.
+		$client_secret = apply_filters( 'igapi_filter_client_secret', '' );
+
+		// Get the client ID saved in the database.
+		if ( empty( $client_secret ) ) {
+			$client_secret = get_option( 'igapi_client_secret' );
+		}
+
+		return $client_secret;
+	}
+
+	/**
 	 * Get the redirect URL
 	 */
 	public function get_redirect_url() {
@@ -62,7 +78,7 @@ class IG_API_Tools_Auth {
 	 * Save Instagram access token
 	 */
 	public function set_access_token( $access_token ) {
-		update_option ( 'igapi_access_token', sanitize_text_field( $access_token ) );
+		update_option ( 'igapi_access_token', $access_token );
 	}
 
 	/**
@@ -86,27 +102,31 @@ class IG_API_Tools_Auth {
 	/**
 	 * Requests new Instagram access token
 	 */
-	public function request_new_access_token() {
-		// Instagram passes a parameter 'code' in the Redirect Url
-		if(isset($_GET['code'])) {
-			// echo 'getting access token...<br>';
-			$url = 'https://api.instagram.com/oauth/access_token';
+	public function request_new_access_token( $code ) {
+		echo $code;
 
-			$curlPost = 'client_id='. $this->ig_client_id . '&client_secret=' . $this->ig_client_secret . '&redirect_uri=' . $this->ig_redirect_url . '&code='. $_GET['code'] . '&grant_type=authorization_code';
-			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, $url);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-			curl_setopt($ch, CURLOPT_POST, 1);
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, $curlPost);
-			$data = json_decode(curl_exec($ch), true);
-			$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-			curl_close($ch);
-			if($http_code != '200') {
-				// throw new Exception('Error : Failed to receieve access token');
-			} else {
-				return $data['access_token'];
-			}
+		$code = sanitize_text_field( $code );
+
+		// echo 'getting access token...<br>';
+		$url = 'https://api.instagram.com/oauth/access_token';
+
+		$curlPost = 'client_id='. $this->get_client_id() . '&client_secret=' . $this->get_client_secret() . '&redirect_uri=' . $this->get_redirect_url() . '&code='. $code . '&grant_type=authorization_code';
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_POST, 1);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $curlPost);
+		$data = json_decode(curl_exec($ch), true);
+		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		curl_close($ch);
+		if($http_code != '200') {
+			echo 'Error code: ' . $http_code;
+			print_r($data);
+			// throw new Exception('Error : Failed to receieve access token');
+		} else {
+			print_r($data);
+			return $data['access_token'];
 		}
 	}
 }

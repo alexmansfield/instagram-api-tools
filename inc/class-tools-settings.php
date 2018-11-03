@@ -8,7 +8,7 @@ class IG_API_Tools_Settings {
 		add_action( 'admin_menu',            array( $this, 'register_settings_page' ) );
 		add_action( 'wp_ajax_igapi_ajax',    array( $this, 'settings_ajax' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
-		add_action( 'admin_init', array( $this, 'disallowed_admin_pages' ) );
+		add_action( 'admin_init', array( $this, 'new_ig_connection' ) );
 	}
 
 	/**
@@ -58,6 +58,21 @@ class IG_API_Tools_Settings {
 		register_setting(
 			'igapi_tools_settings_fields',
 			'igapi_client_id',
+			array( $this, 'sanitize_settings' )
+		);
+
+		add_settings_field(
+			'igapi_client_secret',
+			__( 'Client secret', 'instagram_api_tools_textdomain' ),
+			array( $this, 'display_client_secret_field' ),
+			'igapi_tools',
+			'igapi_tools_settings_fields',
+			array( __( 'You can find this in your IG account.', 'instagram_api_tools_textdomain' ) )
+		);
+
+		register_setting(
+			'igapi_tools_settings_fields',
+			'igapi_client_secret',
 			array( $this, 'sanitize_settings' )
 		);
 
@@ -118,6 +133,23 @@ class IG_API_Tools_Settings {
 			return;
 		}
 
+		if ( !empty( $_GET['ig_code'] ) ) {
+
+			$code = sanitize_text_field( $_GET['ig_code'] );
+
+			add_filter( 'igapi_filter_redirect_url', function(){
+				return menu_page_url( 'igapi_tools', false );
+			} );
+
+			$auth = new IG_API_Tools_Auth;
+			$access_token = $auth->request_new_access_token( $code );
+
+			echo $access_token;
+			$auth->set_access_token( $access_token );
+
+		}
+
+
 		?>
 			<div class="wrap">
 				<h1><?= esc_html(get_admin_page_title()); ?></h1>
@@ -157,6 +189,16 @@ class IG_API_Tools_Settings {
 	}
 
 	/**
+	 * Displays input field for client ID
+	 */
+	public function display_client_secret_field() {
+		$client_secret = get_option( 'igapi_client_secret' );
+
+		echo '<input type="text" value="' . $client_secret . '" name="igapi_client_secret" class="regular-text">';
+		echo '<p class="description">Client secret can be found in the <a href="https://www.instagram.com/developer/clients/manage/">Instagram client manager</a>.</p>';
+	}
+
+	/**
 	 * Displays input field for return URL
 	 */
 	public function display_return_url_field() {
@@ -170,22 +212,24 @@ class IG_API_Tools_Settings {
 	 * Displays Instagram connection button/status
 	 */
 	public function display_connection_field() {
+		add_filter( 'igapi_filter_redirect_url', function(){
+			return menu_page_url( 'igapi_tools', false );
+		} );
+
 		$auth = new IG_API_Tools_Auth;
+		$auth_url = $auth->get_ig_auth_url();
+		echo $auth_url;
 
 		if ( $auth->is_access_token_saved() ) {
-			echo 'access token is saved';
-		} else {
-			add_filter( 'igapi_filter_redirect_url', function(){
-				return menu_page_url( 'igapi_tools', false );
-			} );
+			echo '<p>' . $auth->get_access_token() . '</p>';
+			echo '<p><a class="button" href="' . $auth_url . '">Reconnect to Instagram</a></p>';
 
-			$auth_url = $auth->get_ig_auth_url();
-			echo $auth_url;
+		} else {
+
 			echo '<p><a class="button" href="' . $auth_url . '">Connect to Instagram</a></p>';
 			echo '<p class="description">If the connection fails with an Oath error, you might need to add ' . menu_page_url( 'igapi_tools', false ) . ' to the "Valid redirect URIs" associated with the client ID above.</p>';
 		}
 	}
-
 
 	/**
 	 * Handles AJAX requests from the settings page
@@ -196,23 +240,31 @@ class IG_API_Tools_Settings {
 		$data_tools = new IG_API_Tools_Data;
 		$data = $data_tools->get_data_without_token( $ig_url );
 
+		echo '<pre>';
 		print_r( $data );
+		echo '</pre>';
 
 		wp_die(); // this is required to terminate immediately and return a proper response
 	}
 
-	function disallowed_admin_pages() {
+	/**
+	 * Handles new Instagram connection
+	 *
+	 * Instagram doesn't accept URL parameters in it's return URL, so
+	 * this plugin uses options-general.php (instead of the plugin
+	 * settings page) as the return URL. This function listens for the
+	 * "code" parameter that Instagram sends to the options-general.php
+	 *  when generating an access token.
+	 */
+	function new_ig_connection() {
 		global $pagenow;
 
 		# Check current admin page.
 		if( $pagenow == 'options-general.php' && isset( $_GET['code'] ) ){
 
-			$access_token = sanitize_text_field( $_GET['code'] );
+			$code = sanitize_text_field( $_GET['code'] );
 
-			$auth = new IG_API_Tools_Auth;
-			$auth->set_access_token( $access_token );
-
-			wp_redirect( admin_url( '/options-general.php?page=igapi_tools' ), 302 );
+			wp_redirect( admin_url( '/options-general.php?page=igapi_tools&ig_code=' . $code ), 302 );
 			exit;
 		}
 	}
