@@ -6,10 +6,9 @@ class IG_API_Tools_Auth {
 	 * Get the Instagram client ID
 	 */
 	public function get_client_id() {
-		$client_id = '';
 
 		// Allow plugins to set their own client ID.
-		apply_filters( 'igapi_filter_client_id', $client_id );
+		$client_id = apply_filters( 'igapi_filter_client_id', '' );
 
 		// Get the client ID saved in the database.
 		if ( empty( $client_id ) ) {
@@ -23,10 +22,9 @@ class IG_API_Tools_Auth {
 	 * Get the redirect URL
 	 */
 	public function get_redirect_url() {
-		$redirect_url = '';
 
 		// Allow plugins to set their own redirect URL.
-		apply_filters( 'igapi_filter_redirect_url', $redirect_url );
+		$redirect_url = apply_filters( 'igapi_filter_redirect_url', '' );
 
 		// Get the redirect URL saved in the database.
 		if ( empty( $redirect_url ) ) {
@@ -40,7 +38,7 @@ class IG_API_Tools_Auth {
 	 * Get Instagram authentication URL
 	 */
 	public function get_ig_auth_url() {
-		return 'https://api.instagram.com/oauth/authorize/?client_id=' . $this->get_client_id() . '&redirect_uri=' . $this->get_redirect_url;
+		return 'https://api.instagram.com/oauth/authorize/?client_id=' . $this->get_client_id() . '&redirect_uri=' . $this->get_redirect_url() . '&response_type=code';
 	}
 
 	/**
@@ -58,6 +56,31 @@ class IG_API_Tools_Auth {
 		}
 
 		return $access_token;
+	}
+
+	/**
+	 * Save Instagram access token
+	 */
+	public function set_access_token( $access_token ) {
+		update_option ( 'igapi_access_token', sanitize_text_field( $access_token ) );
+	}
+
+	/**
+	 * Is an access token saved in the database
+	 *
+	 * Looks for a saved token in the database. Returns true if
+	 * a token is found, false if no token is found.
+	 */
+	public function is_access_token_saved() {
+		$access_token = get_option( 'igapi_access_token' );
+
+		if ( empty ( $access_token ) ) {
+			$token_exists = false;
+		} else {
+			$token_exists = true;
+		}
+
+		return $token_exists;
 	}
 
 	/**

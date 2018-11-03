@@ -1,0 +1,7 @@
+#igapi-response {
+	min-height: 50px;
+}
+
+#igapi-response.loading {
+	background: url('../img/ajax-loader.gif') no-repeat top left;
+}

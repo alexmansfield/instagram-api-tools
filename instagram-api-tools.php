@@ -31,4 +31,3 @@ require_once( 'inc/class-tools-settings.php' );
 // Create the Settings > IG Tools.
 new IG_API_Tools_Settings;
 
-

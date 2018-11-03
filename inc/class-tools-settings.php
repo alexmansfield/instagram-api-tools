@@ -7,7 +7,8 @@ class IG_API_Tools_Settings {
 		add_action( 'admin_init',            array( $this, 'register_settings' ) );
 		add_action( 'admin_menu',            array( $this, 'register_settings_page' ) );
 		add_action( 'wp_ajax_igapi_ajax',    array( $this, 'settings_ajax' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue') );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
+		add_action( 'admin_init', array( $this, 'disallowed_admin_pages' ) );
 	}
 
 	/**
@@ -16,6 +17,7 @@ class IG_API_Tools_Settings {
 	function enqueue( $hook ) {
 		if ( $this->page == $hook ) {
 			wp_enqueue_script( 'igapi-scripts', plugins_url( 'js/scripts.js', dirname( __FILE__ ) ), array( 'jquery' ) );
+			wp_enqueue_style( 'igapi-styles', plugins_url( 'css/igapi.css', dirname( __FILE__ ) ) );
 		}
 	}
 
@@ -72,6 +74,15 @@ class IG_API_Tools_Settings {
 			'igapi_tools_settings_fields',
 			'igapi_return_url',
 			array( $this, 'sanitize_settings' )
+		);
+
+		add_settings_field(
+			'igapi_connection',
+			__( 'Instagram connection', 'instagram_api_tools_textdomain' ),
+			array( $this, 'display_connection_field' ),
+			'igapi_tools',
+			'igapi_tools_settings_fields',
+			array( __( 'Instagram will return data to this URL.', 'instagram_api_tools_textdomain' ) )
 		);
 	}
 
@@ -141,7 +152,8 @@ class IG_API_Tools_Settings {
 	public function display_client_id_field() {
 		$client_id = get_option( 'igapi_client_id' );
 
-		echo '<input type="text" value="' . $client_id . '" name="igapi_client_id">';
+		echo '<input type="text" value="' . $client_id . '" name="igapi_client_id" class="regular-text">';
+		echo '<p class="description">Client ID can be found in the <a href="https://www.instagram.com/developer/clients/manage/">Instagram client manager</a>.</p>';
 	}
 
 	/**
@@ -150,8 +162,30 @@ class IG_API_Tools_Settings {
 	public function display_return_url_field() {
 		$return_url = get_option( 'igapi_return_url' );
 
-		echo '<input type="text" value="' . $return_url . '" name="igapi_return_url">';
+		echo '<input type="text" value="' . $return_url . '" name="igapi_return_url" class="regular-text">';
+		echo '<p class="description">Instagram will return data to this URL. Leave blank to use testing tools below.</p>';
 	}
+
+	/**
+	 * Displays Instagram connection button/status
+	 */
+	public function display_connection_field() {
+		$auth = new IG_API_Tools_Auth;
+
+		if ( $auth->is_access_token_saved() ) {
+			echo 'access token is saved';
+		} else {
+			add_filter( 'igapi_filter_redirect_url', function(){
+				return menu_page_url( 'igapi_tools', false );
+			} );
+
+			$auth_url = $auth->get_ig_auth_url();
+			echo $auth_url;
+			echo '<p><a class="button" href="' . $auth_url . '">Connect to Instagram</a></p>';
+			echo '<p class="description">If the connection fails with an Oath error, you might need to add ' . menu_page_url( 'igapi_tools', false ) . ' to the "Valid redirect URIs" associated with the client ID above.</p>';
+		}
+	}
+
 
 	/**
 	 * Handles AJAX requests from the settings page
@@ -160,18 +194,26 @@ class IG_API_Tools_Settings {
 		$ig_url = esc_url( $_POST['url'] );
 
 		$data_tools = new IG_API_Tools_Data;
-		$data = $data_tools->get_useful_data_without_token( $ig_url );
+		$data = $data_tools->get_data_without_token( $ig_url );
 
-		if ( is_array( $data ) ) {
-			// Handle error
-			echo 'Error:';
-			echo '<pre>';
-			print_r( $data );
-			echo '</pre>';
-		} else {
-			echo $data;
-		}
+		print_r( $data );
 
 		wp_die(); // this is required to terminate immediately and return a proper response
+	}
+
+	function disallowed_admin_pages() {
+		global $pagenow;
+
+		# Check current admin page.
+		if( $pagenow == 'options-general.php' && isset( $_GET['code'] ) ){
+
+			$access_token = sanitize_text_field( $_GET['code'] );
+
+			$auth = new IG_API_Tools_Auth;
+			$auth->set_access_token( $access_token );
+
+			wp_redirect( admin_url( '/options-general.php?page=igapi_tools' ), 302 );
+			exit;
+		}
 	}
 }

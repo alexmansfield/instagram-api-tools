@@ -1,8 +1,9 @@
 jQuery( document ).ready( function( $ ) {
 
-
 	$( "#igapi-get-data" ).click(function(e) {
 		e.preventDefault();
+
+		$('#igapi-response').addClass('loading');
 
 		// alert($('#igapi-test-url').val());
 
@@ -12,6 +13,7 @@ jQuery( document ).ready( function( $ ) {
 		};
 
 		$.post(ajaxurl, data, function(response) {
+			$('#igapi-response').removeClass('loading');
 			$('#igapi-response').html('Response: <br>' + response);
 		});
 	});
