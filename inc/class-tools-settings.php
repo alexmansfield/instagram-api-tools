@@ -172,7 +172,7 @@ class IG_API_Tools_Settings {
 					<p><input type="text" id="igapi-test-url" style="width: 90%"></p>
 					<p><a id="igapi-get-data" class="button" href="#">Get Data</a></p>
 
-					<div id="igapi-response"></div>
+					<pre id="igapi-response"></pre>
 				</div>
 			</div>
 		<?php
@@ -218,10 +218,15 @@ class IG_API_Tools_Settings {
 
 		$auth = new IG_API_Tools_Auth;
 		$auth_url = $auth->get_ig_auth_url();
-		echo $auth_url;
+		// echo $auth_url;
+
+		$data = new IG_API_Tools_Data;
 
 		if ( $auth->is_access_token_saved() ) {
-			echo '<p>' . $auth->get_access_token() . '</p>';
+			echo '<p>Current access token:' . $auth->get_access_token() . '</p>';
+			echo '<p>When request limit resets: ' . $data->get_request_count_time_reset() . '</p>';
+			echo '<p>Current server time: ' . date( 'g:i:sa' ) . '</p>';
+			echo '<p>Time till reset: ' . $data->get_time_till_reset() . '</p>';
 			echo '<p><a class="button" href="' . $auth_url . '">Reconnect to Instagram</a></p>';
 
 		} else {
@@ -238,11 +243,15 @@ class IG_API_Tools_Settings {
 		$ig_url = esc_url( $_POST['url'] );
 
 		$data_tools = new IG_API_Tools_Data;
-		$data = $data_tools->get_data_without_token( $ig_url );
+		$data = $data_tools->get_data( $ig_url );
 
-		echo '<pre>';
-		print_r( $data );
-		echo '</pre>';
+		$response = array(
+			'request_count' => $data_tools->get_request_count(),
+			'request_count_time' => $data_tools->get_request_count_time(),
+			'request_response' => $data
+		);
+
+		print_r( $response );
 
 		wp_die(); // this is required to terminate immediately and return a proper response
 	}

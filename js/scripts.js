@@ -14,7 +14,7 @@ jQuery( document ).ready( function( $ ) {
 
 		$.post(ajaxurl, data, function(response) {
 			$('#igapi-response').removeClass('loading');
-			$('#igapi-response').html('Response: <br>' + response);
+			$('#igapi-response').html(response);
 		});
 	});
 
