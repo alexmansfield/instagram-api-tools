@@ -26,9 +26,9 @@ class IG_API_Tools_Settings {
 	 */
 	public function register_settings_page() {
 		$this->page = add_submenu_page(
-			'options-general.php',
+			'tools.php',
 			__( 'Instagram API Tools', 'instagram_api_tools_textdomain' ),
-			__( 'IG Tools', 'instagram_api_tools_textdomain' ),
+			__( 'Instagram API', 'instagram_api_tools_textdomain' ),
 			'manage_options',
 			'igapi_tools',
 			array( $this, 'settings_page_content' )
@@ -260,20 +260,19 @@ class IG_API_Tools_Settings {
 	 * Handles new Instagram connection
 	 *
 	 * Instagram doesn't accept URL parameters in it's return URL, so
-	 * this plugin uses options-general.php (instead of the plugin
-	 * settings page) as the return URL. This function listens for the
-	 * "code" parameter that Instagram sends to the options-general.php
-	 *  when generating an access token.
+	 * this plugin uses tools.php (instead of the plugin settings page)
+	 * as the return URL. This function listens for the "code" parameter
+	 * that Instagram sends to the tools.php when generating an access token.
 	 */
 	function new_ig_connection() {
 		global $pagenow;
 
 		# Check current admin page.
-		if( $pagenow == 'options-general.php' && isset( $_GET['code'] ) ){
+		if( $pagenow == 'tools.php' && isset( $_GET['code'] ) ){
 
 			$code = sanitize_text_field( $_GET['code'] );
 
-			wp_redirect( admin_url( '/options-general.php?page=igapi_tools&ig_code=' . $code ), 302 );
+			wp_redirect( admin_url( '/tools.php?page=igapi_tools&ig_code=' . $code ), 302 );
 			exit;
 		}
 	}
